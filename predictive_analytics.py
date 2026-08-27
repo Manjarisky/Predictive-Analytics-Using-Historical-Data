@@ -26,7 +26,6 @@ print("=" * 60)
 
 np.random.seed(42)
 
-# Generate 48 months of historical sales
 dates = pd.date_range(
     start="2022-01-01",
     periods=48,
@@ -35,7 +34,6 @@ dates = pd.date_range(
 
 months = np.arange(1, 49)
 
-# Create an increasing sales trend with some seasonal variation
 sales = (
     50000
     + months * 1200
@@ -50,14 +48,9 @@ df = pd.DataFrame({
     "Sales": sales
 })
 
-# Save historical data
-df.to_csv(
-    "historical_sales.csv",
-    index=False
-)
+df.to_csv("historical_sales.csv", index=False)
 
 print("\nHistorical dataset created successfully!")
-
 print("Rows:", df.shape[0])
 print("Columns:", df.shape[1])
 
@@ -73,21 +66,15 @@ print("\n" + "=" * 60)
 print("DATA CLEANING")
 print("=" * 60)
 
-# Convert Date to datetime
 df["Date"] = pd.to_datetime(df["Date"])
 
-# Check missing values
 print("\nMissing values:")
 print(df.isnull().sum())
 
-# Check duplicate records
 print("\nDuplicate rows:")
 print(df.duplicated().sum())
 
-# Remove duplicates
 df = df.drop_duplicates()
-
-# Sort data by date
 df = df.sort_values("Date")
 
 print("\nData cleaning completed.")
@@ -101,17 +88,25 @@ print("\n" + "=" * 60)
 print("FEATURE ENGINEERING")
 print("=" * 60)
 
-# Create a numerical time feature
 df["Month_Number"] = np.arange(1, len(df) + 1)
-
-# Extract year and month
 df["Year"] = df["Date"].dt.year
 df["Month"] = df["Date"].dt.month
+
+# Seasonal features
+df["Sin_Month"] = np.sin(
+    2 * np.pi * df["Month"] / 12
+)
+
+df["Cos_Month"] = np.cos(
+    2 * np.pi * df["Month"] / 12
+)
 
 print("\nFeatures created:")
 print("- Month_Number")
 print("- Year")
 print("- Month")
+print("- Sin_Month")
+print("- Cos_Month")
 
 
 # ============================================================
@@ -126,7 +121,6 @@ print("\nStatistical summary:")
 print(df["Sales"].describe())
 
 
-# Historical sales trend
 plt.figure(figsize=(10, 6))
 
 plt.plot(
@@ -143,9 +137,7 @@ plt.xticks(rotation=45)
 
 plt.tight_layout()
 
-plt.savefig(
-    "historical_sales_trend.png"
-)
+plt.savefig("historical_sales_trend.png")
 
 plt.close()
 
@@ -160,15 +152,16 @@ print("\n" + "=" * 60)
 print("PREPARING DATA FOR MACHINE LEARNING")
 print("=" * 60)
 
-# Use time as the predictor
-X = df[["Month_Number"]]
+features = [
+    "Month_Number",
+    "Sin_Month",
+    "Cos_Month"
+]
 
+X = df[features]
 y = df["Sales"]
 
-# Time-based train-test split
-# First 80% = training
-# Last 20% = testing
-
+# Time-based split
 split_index = int(len(df) * 0.80)
 
 X_train = X.iloc[:split_index]
@@ -197,16 +190,6 @@ model.fit(
 )
 
 print("\nLinear Regression model trained successfully.")
-
-print(
-    "Model coefficient:",
-    round(model.coef_[0], 2)
-)
-
-print(
-    "Model intercept:",
-    round(model.intercept_, 2)
-)
 
 
 # ============================================================
@@ -254,7 +237,7 @@ print(round(r2, 4))
 
 
 # ============================================================
-# 9. ACTUAL VS PREDICTED SALES
+# 9. ACTUAL VS PREDICTED
 # ============================================================
 
 comparison = pd.DataFrame({
@@ -292,10 +275,7 @@ plt.plot(
     label="Predicted Sales"
 )
 
-plt.title(
-    "Actual vs Predicted Sales"
-)
-
+plt.title("Actual vs Predicted Sales")
 plt.xlabel("Date")
 plt.ylabel("Sales")
 
@@ -320,8 +300,6 @@ print("\n" + "=" * 60)
 print("FUTURE SALES FORECAST")
 print("=" * 60)
 
-# Forecast next 12 months
-
 future_month_numbers = np.arange(
     len(df) + 1,
     len(df) + 13
@@ -334,8 +312,24 @@ future_dates = pd.date_range(
     freq="MS"
 )
 
+future_months = future_dates.month
+
+future_sin = np.sin(
+    2 * np.pi * future_months / 12
+)
+
+future_cos = np.cos(
+    2 * np.pi * future_months / 12
+)
+
+future_X = pd.DataFrame({
+    "Month_Number": future_month_numbers,
+    "Sin_Month": future_sin,
+    "Cos_Month": future_cos
+})
+
 future_predictions = model.predict(
-    future_month_numbers.reshape(-1, 1)
+    future_X
 )
 
 future_df = pd.DataFrame({
@@ -373,10 +367,7 @@ plt.plot(
     label="Future Forecast"
 )
 
-plt.title(
-    "Historical Sales and Future Forecast"
-)
-
+plt.title("Historical Sales and Future Forecast")
 plt.xlabel("Date")
 plt.ylabel("Sales")
 
@@ -402,7 +393,6 @@ print("TREND ANALYSIS")
 print("=" * 60)
 
 first_sales = df["Sales"].iloc[0]
-
 last_sales = df["Sales"].iloc[-1]
 
 change = last_sales - first_sales
@@ -411,21 +401,9 @@ percentage_change = (
     change / first_sales
 ) * 100
 
-print(
-    "\nInitial Sales:",
-    round(first_sales, 2)
-)
-
-print(
-    "Latest Historical Sales:",
-    round(last_sales, 2)
-)
-
-print(
-    "Change:",
-    round(change, 2)
-)
-
+print("\nInitial Sales:", round(first_sales, 2))
+print("Latest Historical Sales:", round(last_sales, 2))
+print("Change:", round(change, 2))
 print(
     "Percentage Change:",
     round(percentage_change, 2),
@@ -433,19 +411,14 @@ print(
 )
 
 if percentage_change > 0:
-
     print(
         "\nTrend: Overall sales show an increasing trend."
     )
-
 elif percentage_change < 0:
-
     print(
         "\nTrend: Overall sales show a decreasing trend."
     )
-
 else:
-
     print(
         "\nTrend: Sales are relatively stable."
     )
@@ -460,7 +433,6 @@ print("PROJECT COMPLETED SUCCESSFULLY!")
 print("=" * 60)
 
 print("\nFiles created:")
-
 print("1. historical_sales.csv")
 print("2. actual_vs_predicted.csv")
 print("3. future_sales_forecast.csv")
